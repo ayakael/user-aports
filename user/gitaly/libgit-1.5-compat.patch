@@ -2,4 +2,4 @@
 +++ b/ruby/Gemfile.lock
 @@ -196 +196 @@
 -    rugged (1.2.0)
-+    rugged (1.4.4)
++    rugged (1.5.1)

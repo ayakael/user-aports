@@ -1,20 +1,21 @@
+# Maintainer: Antoine Martin (ayakael) <dev@ayakael.net>
+# Contributor: Antoine Martin (ayakael) <dev@ayakael.net>
 # Contributor: Jakub Jirutka <jakub@jirutka.cz>
-# Maintainer: Jakub Jirutka <jakub@jirutka.cz>
 pkgname=gitaly
 pkgver=15.3.3
-pkgrel=0
+pkgrel=2
 pkgdesc="A Git RPC service for handling all the git calls made by GitLab"
 url="https://gitlab.com/gitlab-org/gitaly/"
-#arch="all"  # XXX: temporarily disabled
+arch="all"
 # GPL-2.0-only WITH GCC-exception-2.0: bundled libgit2
 license="MIT AND GPL-2.0-only WITH GCC-exception-2.0"
 depends="
 	git>=2.33
-	ruby2.7
-	ruby2.7-bigdecimal
-	ruby2.7-bundler
-	ruby2.7-io-console
-	ruby2.7-json
+	ruby
+	ruby-bigdecimal
+	ruby-bundler
+	ruby-io-console
+	ruby-json
 	"
 makedepends="
 	bash
@@ -22,12 +23,12 @@ makedepends="
 	go
 	icu-dev
 	libffi-dev
-	libgit2-dev=~1.4
+	libgit2-dev
 	libssh2-dev
 	libxml2-dev
 	libxslt-dev
-	ruby2.7-dev
-	ruby2.7-grpc=~1.42.0
+	ruby-dev
+	ruby-grpc=~1.42.0
 	zlib-dev
 	"
 subpackages="
@@ -36,10 +37,10 @@ subpackages="
 	$pkgname-praefect
 	"
 # FIXME: Makefile clones libgit2 and git repositories.
-source="https://gitlab.com/gitlab-org/$pkgname/-/archive/v$pkgver/$pkgname-v$pkgver.tar.gz
+source="https://gitlab.com/gitlab-org/gitaly/-/archive/v$pkgver/gitaly-v$pkgver.tar.gz
 	gemfile-use-local-grpc.patch
-	libgit-1.4-compat.patch
 	config.patch
+	libgit-1.5-compat.patch
 	$pkgname.initd
 	"
 builddir="$srcdir/$pkgname-v$pkgver"
@@ -73,9 +74,12 @@ build() {
 	bundle config --local build.nokogiri --use-system-libraries \
 		--with-xml2-include=/usr/include/libxml2 \
 		--with-xslt-include=/usr/include/libxslt
-	bundle config --local build.rugged --use-system-libraries
+	# can't use system-library for some reason on 1.5.0 and 1.5.1
+	# bundle config --local build.rugged --use-system-libraries
 	# https://github.com/protocolbuffers/protobuf/issues/2335#issuecomment-579913357
 	bundle config --local build.google-protobuf --with-cflags=-D__va_copy=va_copy
+	bundle config --local path "vendor/bundle"
+	bundle config --local without "development test"
 
 	bundle install --no-cache
 
@@ -123,20 +127,21 @@ package() {
 	cd "$rubydir"/vendor/bundle/ruby/*/gems
 
 	# Remove tests, docs and other unnecessary files.
-	rm -Rf */benchmark \
-		*/spec \
-		*/test \
-		*/tests \
-		*/appveyor.yml \
-		*/*.md \
-		*/*.rdoc \
-		*/*.txt \
-		*/CHANGELOG* \
-		*/CHANGES* \
-		*/CONTRIBUT* \
-		*/*LICENSE* \
-		*/Rakefile \
-		*/README*
+	rm -Rf \
+		./*/benchmark \
+		./*/spec \
+		./*/test \
+		./*/tests \
+		./*/appveyor.yml \
+		./*/*.md \
+		./*/*.rdoc \
+		./*/*.txt \
+		./*/CHANGELOG* \
+		./*/CHANGES* \
+		./*/CONTRIBUT* \
+		./*/*LICENSE* \
+		./*/Rakefile \
+		./*/README*
 
 	# Remove bundled libgit2 and pg_query sources.
 	rm -R rugged-*/vendor/libgit2
@@ -185,7 +190,7 @@ praefect() {
 sha512sums="
 a3d4f929014df6f3e7034f493be9b27dcc1e820e42198582171a43c7ddf1bc9087329f13878f139a7d6dc1e6a92a76dabf26214409abe839d8f9508429f91ba0  gitaly-v15.3.3.tar.gz
 ebcb7296696b9c2b47b7770a37ae13663cb0343659d482ef45717ef5548ede69eedee707763c6dfd73c60ef303e03fbe5502967783c59c00475a1a6d0c5ee128  gemfile-use-local-grpc.patch
-7bf25645b1f236fabbbac472bc169d73fa7edb14a85d9adac4613d9ddad413f21fe7ec9779d4276971171da574e5d487c49367badd0939e7606476b16a56efeb  libgit-1.4-compat.patch
 8779e34b2a468a74c590ee29155e7b197eabcd323157b1e27208fa2f3100b31e1fd1ff80d7067198e66cfb1be506caedeecbfeb4e9f32aa5b8422455e1718e1a  config.patch
+c0c0fb03baefae34e117750c8b27ee67b18f8202161cbc202371d2f916ca419b82e5df0d5c3db23d9e2bb12d205e03dab51f61cd9e4ede2d0abe96de47c76e3f  libgit-1.5-compat.patch
 c32105d921be16eaf559cf21d6840bc346cd92b5e37974cedecdb5a2d2ca1eb5e8fbb144f5fc8a1289bf9415102b313cf2d61ee510c80f08ab33a799f5ac7122  gitaly.initd
 "
