@@ -4,10 +4,10 @@
 pkgname=grpc
 # This version is used in gitlab-foss 15.2.2.
 pkgver=1.42.0
-pkgrel=0
+pkgrel=1
 pkgdesc="The C based gRPC"
 url="https://grpc.io/"
-#arch="all"  # XXX: temporarily disabled
+arch="all"
 # BSD-3-Clause: third_party/upb, third_party/address_sorting
 # MIT: third_party/upb/third_party/utf8_range
 license="Apache-2.0 AND BSD-3-Clause AND MIT"
@@ -24,7 +24,7 @@ _pythondepends="
 # XXX: should also depend on ruby-google-protobuf=3.18
 _rubydepends="
 	$pkgname=$pkgver-r$pkgrel
-	ruby2.7-etc
+	ruby-etc
 	"
 makedepends="
 	abseil-cpp
@@ -40,7 +40,7 @@ makedepends="
 	openssl-dev
 	protobuf-dev
 	re2-dev
-	ruby2.7-dev
+	ruby-dev
 	samurai
 	yaml-dev
 	xxhash-dev
@@ -54,7 +54,7 @@ subpackages="
 	$pkgname-cpp
 	$pkgname-plugins
 	$pkgname-doc
-	ruby2.7-grpc:_ruby
+	ruby-grpc:_ruby
 	"
 _googletest_rev=0e402173c97aea7a00749e825b194bfede4f2e45
 source="https://github.com/grpc/grpc/archive/v$pkgver/grpc-v$pkgver.tar.gz
@@ -78,7 +78,7 @@ prepare() {
 	# Since grpc sets XXH_INCLUDE_ALL wherever it uses xxhash, it is using xxhash
 	# as a header-only library. This means we can replace it with the system copy
 	# by doing nothing further; xxhash.h is in the system include path and will be
-	# found instead, and there are no linker flags to add. See also	
+	# found instead, and there are no linker flags to add. See also
 	# https://github.com/grpc/grpc/issues/25945.
 	rm -rvf third_party/xxhash/*
 
