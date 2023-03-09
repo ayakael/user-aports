@@ -1,6 +1,8 @@
---- a/config.yml.example
+diff --git a/config.yml.example.orig b/config.yml.example
+index 886fde0..f03c897 100644
+--- a/config.yml.example.orig
 +++ b/config.yml.example
-@@ -13,7 +13,7 @@
+@@ -13,7 +13,7 @@ user: git
  # only listen on a Unix domain socket. For Unix domain sockets use
  # "http+unix://<urlquoted-path-to-socket>", e.g.
  # "http+unix://%2Fpath%2Fto%2Fsocket"
@@ -9,7 +11,7 @@
  
  # When a http+unix:// is used in gitlab_url, this is the relative URL root to GitLab.
  # Not used if gitlab_url is http:// or https://.
-@@ -29,15 +29,15 @@
+@@ -29,15 +29,15 @@ http_settings:
  #
  
  # File used as authorized_keys for gitlab user
@@ -28,7 +30,7 @@
  #
  # The secret field supersedes the secret_file, and if set that
  # file will not be read.
-@@ -45,13 +45,13 @@
+@@ -45,13 +45,13 @@ auth_file: "/home/git/.ssh/authorized_keys"
  
  # Log file.
  # Default is gitlab-shell.log in the root directory.
@@ -45,7 +47,7 @@
  
  # Audit usernames.
  # Set to true to see real usernames in the logs instead of key ids, which is easier to follow, but
-@@ -61,45 +61,3 @@
+@@ -61,57 +61,3 @@ audit_usernames: false
  # Distributed Tracing. GitLab-Shell has distributed tracing instrumentation.
  # For more details, visit https://docs.gitlab.com/ee/development/distributed_tracing.html
  # gitlab_tracing: opentracing://driver
@@ -60,6 +62,10 @@
 -  # Proxy protocol policy ("use", "require", "reject", "ignore"), "use" is the default value
 -  # Values: https://github.com/pires/go-proxyproto/blob/195fedcfbfc1be163f3a0d507fac1709e9d81fed/policy.go#L20
 -  proxy_policy: "use"
+-  # Proxy allowed IP addresses. Takes precedent over proxy_policy. Disabled by default.
+-  # proxy_allowed:
+-  #  - "192.168.0.1"
+-  #  - "192.168.1.0/24"
 -  # Address which the server listens on HTTP for monitoring/health checks. Defaults to localhost:9122.
 -  web_listen: "localhost:9122"
 -  # Maximum number of concurrent sessions allowed on a single SSH connection. Defaults to 10.
@@ -91,3 +97,11 @@
 -    - /run/secrets/ssh-hostkeys/ssh_host_rsa_key-cert.pub
 -    - /run/secrets/ssh-hostkeys/ssh_host_ecdsa_key-cert.pub
 -    - /run/secrets/ssh-hostkeys/ssh_host_ed25519_key-cert.pub
+-  # GSSAPI-related settings
+-  gssapi:
+-    # Enable the gssapi-with-mic authentication method. Defaults to false.
+-    enabled: false
+-    # Keytab path. Defaults to "", system default (usually /etc/krb5.keytab).
+-    keytab: ""
+-    # The Kerberos service name to be used by sshd. Defaults to "", accepts any service name in keytab file.
+-    service_principal_name: ""
