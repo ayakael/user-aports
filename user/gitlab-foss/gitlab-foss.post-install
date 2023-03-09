@@ -8,11 +8,6 @@ shell_secret_file='/etc/gitlab/gitlab_shell_secret'
 workhorse_secret_file='/etc/gitlab/gitlab_workhorse_secret'
 kas_secret_file='/etc/gitlab/gitlab_kas_secret'
 
-gen_random_hex() {
-	local bits="$1"
-	ruby -e "require 'securerandom'; puts SecureRandom.hex($bits)"
-}
-
 gen_random_b64() {
 	local bits="$1"
 	ruby <<-EOF
@@ -57,7 +52,7 @@ chown root:$group "$secrets_file"
 if [ ! -f "$shell_secret_file" ]; then
 	echo "* Generating random secret in $shell_secret_file" >&2
 
-	gen_random_hex 16 > "$shell_secret_file"
+	head -c 512 /dev/urandom | LC_CTYPE=C tr -cd 'a-zA-Z0-9' | head -c 64 > "$shell_secret_file"
 	chown root:$group "$shell_secret_file"
 	chmod 0640 "$shell_secret_file"
 fi

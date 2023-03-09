@@ -1,13 +1,14 @@
+# Maintainer: Antoine Martin (ayakael) <dev@ayakael.net>
+# Contributor: Antoine Martin (ayakael) <dev@ayakael.net>
 # Contributor: Jakub Jirutka <jakub@jirutka.cz>
-# Maintainer: Jakub Jirutka <jakub@jirutka.cz>
 pkgname=gitlab-foss
 _pkgname=${pkgname%-foss}
-pkgver=15.3.4_p1
-_gitrev=f756db9918ea6fc623aecc23b06a137e6291916f
-pkgrel=0
+pkgver=15.9.2
+_gittag=v$pkgver
+pkgrel=3
 pkgdesc="A version control for your server"
 url="https://gitlab.com/gitlab-org/gitlab-foss"
-#arch="x86_64"  # XXX: temporarily disabled
+arch="x86_64"
 license="MIT"
 # ruby-irb is needed only for Rails console (gitlab-rails console)
 depends="
@@ -17,34 +18,35 @@ depends="
 	exiftool
 	git>=2.18.0
 	gitaly~=15.3
-	gitlab-shell~=14.10
+	gitlab-shell~=14.17
 	graphicsmagick
 	http-parser
 	procps
 	py-docutils
 	python3
 	redis>=2.8
-	ruby2.7
-	ruby2.7-bigdecimal
-	ruby2.7-bundler
-	ruby2.7-fiddle
-	ruby2.7-io-console
-	ruby2.7-irb
-	ruby2.7-json
-	ruby2.7-rake
-	ruby2.7-webrick
+	ruby
+	ruby-bigdecimal
+	ruby-bundler
+	ruby-fiddle
+	ruby-io-console
+	ruby-irb
+	ruby-json
+	ruby-rake
+	ruby-webrick
 	shared-mime-info
 	tzdata
 	"
 makedepends="
 	cmd:chrpath
+	cmake
 	file-dev
 	go
 	gpgme-dev
 	icu-dev
 	libffi-dev
 	libgcrypt-dev
-	libgit2-dev~=1.4
+	libgit2-dev
 	libpq-dev
 	libxml2-dev
 	libxslt-dev
@@ -53,16 +55,17 @@ makedepends="
 	openssl-dev
 	protobuf-dev
 	re2-dev
-	ruby2.7-dev
-	ruby2.7-grpc
+	ruby-dev
+	ruby-grpc
 	yarn>=1.2.0
 	"
 pkgusers="git"
 pkggroups="git www-data"
 install="$pkgname.pre-install $pkgname.post-install $pkgname.post-upgrade"
-subpackages="$pkgname-assets::noarch"
-source="https://github.com/jirutka/gitlab-foss/archive/$_gitrev/gitlabhq-$_gitrev.tar.gz
-	libgit-1.4-compat.patch
+subpackages="$pkgname-assets::noarch $pkgname-openrc"
+source="https://gitlab.com/gitlab-org/gitlab-foss/-/archive/$_gittag/gitlab-foss-$_gittag.tar.gz
+	database-config.patch
+	openssl3-compat.patch
 	$_pkgname.initd
 	$_pkgname.mailroom.initd
 	$_pkgname.rails.initd
@@ -72,7 +75,7 @@ source="https://github.com/jirutka/gitlab-foss/archive/$_gitrev/gitlabhq-$_gitre
 	$_pkgname.logrotate
 	bin-wrapper.in
 	"
-builddir="$srcdir/gitlab-foss-$_gitrev"
+builddir="$srcdir/gitlab-foss-$_gittag"
 
 _prefix="usr/lib/bundles/$_pkgname"
 
@@ -85,8 +88,6 @@ prepare() {
 	local sysgemdir=$(ruby -e 'puts Gem.default_dir')
 
 	default_prepare
-
-	cd "$builddir"
 
 	# The default log level is very chatty.
 	sed -i 's/^\(\s*config.log_level\s*=\).*$/\1 :warn/' \
@@ -126,18 +127,13 @@ build() {
 		--with-xml2-include=/usr/include/libxml2 \
 		--with-xslt-include=/usr/include/libxslt
 	bundle config --local build.ruby-magic --enable-system-libraries
-	bundle config --local build.rugged --use-system-libraries
+	# compatibility with libgit 1.5.1 has issues
+	# bundle config --local build.rugged --use-system-libraries
 	# https://github.com/protocolbuffers/protobuf/issues/2335#issuecomment-579913357
 	bundle config --local build.google-protobuf --with-cflags=-D__va_copy=va_copy
+	bundle config --local path "vendor/bundle"
 
 	bundle install --no-cache
-
-	# Fix https://github.com/funny-falcon/murmurhash3-ruby/pull/9
-	(
-		cd vendor/bundle/ruby/*/extensions/*/*/murmurhash3-*
-		mkdir -p murmurhash3
-		mv native.so murmurhash3/
-	)
 
 	# Replace bundled CA bundle with symlink.
 	(
@@ -212,8 +208,6 @@ package() {
 	local datadir="$pkgdir/var/lib/gitlab"
 	local file dest
 
-	cd "$builddir"
-
 	install -d -m755 "$destdir" "$destdir"/bin
 
 	install -d -m755 -o git -g git \
@@ -247,7 +241,7 @@ package() {
 	# Install application files.
 	# Note: *VERSION files and doc directory are required (Help in GitLab
 	# menu refers to the doc directory).
-	cp -rl .bundle config.ru Gemfile* INSTALLATION_TYPE Rakefile *VERSION \
+	cp -rl .bundle config.ru Gemfile* INSTALLATION_TYPE Rakefile ./*VERSION \
 		app data db doc fixtures config lib locale metrics_server public sidekiq_cluster vendor \
 		"$destdir"/
 
@@ -268,7 +262,7 @@ package() {
 	rm -r app/assets
 	rm -r vendor/assets
 	find public/assets -name '*.vue' -delete
-	find public/assets -type d | xargs rmdir --ignore-fail-on-non-empty
+	find public/assets -type d -exec rmdir --ignore-fail-on-non-empty '{}' \;
 	# These load gems in the assets group.
 	rm config/initializers/gettext_rails_i18n_patch.rb
 	rm config/initializers/sprockets.rb
@@ -302,11 +296,6 @@ package() {
 
 	# Remove assets, they are already compiled.
 	rm -r gems/tanuki_emoji-*/app/assets
-
-	# Remove sources and binaries of native extensions (they are installed
-	# in extensions directory).
-	find gems/ -type d -name ext -maxdepth 2 -exec rm -frv "{}" +
-	find gems/ -name '*.so' -delete
 
 	# Remove build logs and cache.
 	rm -rf build_info/ cache/
@@ -382,8 +371,9 @@ assets() {
 }
 
 sha512sums="
-de5f4c2502764ab36de1f6b085c49e868b0fcd5b4d90a71e3d702fde914a89392d4c9ed7080bae99dc7c233d6be94b8792837cf955bcd9d38735104297a63d23  gitlabhq-f756db9918ea6fc623aecc23b06a137e6291916f.tar.gz
-80e27697772c4529720f2ec65d314641cd5f437070d0fefd3c521852ff6dad8c9127534e379a5c0bcee4bbae8d5a373d131bf91a58606d02c89104e34a88baac  libgit-1.4-compat.patch
+8b99a892515fdeedbded148c31455b373af6d8ba1802d920decfcb4afd4316f8d12ea74134a3ab6a9863e8fbe99b9d58016aa22689324ecc04d380f84ea5c4f7  gitlab-foss-v15.9.2.tar.gz
+f8b6855445e4086b4a4059a6359fafe7ca78ccf9ed6953a5b2a606d02add9519bb98ccf5f4a3bb750b94cfc44e660e70186813f7c7296fac343377e922e8a54a  database-config.patch
+c45d2a81311e69fe66ae40890e5d98718ce7f23bfed5b47422d65c904dd84c46eafd1e55201ae0ecea66cc0315648ae2cac7ad88c4487e084791dfd8e5567139  openssl3-compat.patch
 55b0667d3969113ffd6860652ee8bdb9a534c25f413f33b2739e922c886988e7cea72c1c00c7eecf29fcff3682b1324156365605ffc6aae45d1e0ccddf96288b  gitlab.initd
 1f451b67a5d5e58650b0fe862a2b65cfb8bff5502b37d94ae90619c1ff9affbecf24428303a2849bebce5f94bef37078f0e5710e344bbab616134e910938384a  gitlab.mailroom.initd
 b6a6d9ba20557e61efa24f2d5a489873fefbb981f7d4465794a857b2971263c08ec29cc001c372522cdc0d48245e59751307c9f44f6ef4d87bf2e3ec5c23fb1c  gitlab.rails.initd
